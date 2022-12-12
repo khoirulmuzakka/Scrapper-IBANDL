@@ -38,6 +38,7 @@ def getYear (ref ) :
 class WorkerDoScrap(QObject) : 
     finished = pyqtSignal()
     progress = pyqtSignal(str)
+    greyOut = pyqtSignal(bool)
 
     def __init__(self, sw, folder) : 
         super().__init__()
@@ -45,6 +46,7 @@ class WorkerDoScrap(QObject) :
         self.folder = folder
 
     def doScrap (self) : 
+        self.greyOut.emit(True)
         if self.folder=="" : 
             return False
 
@@ -159,7 +161,9 @@ class WorkerDoScrap(QObject) :
                 driver.switch_to.frame("MenuFrame")
         self.progress.emit("Done. :-)")
         driver.quit()
+        self.greyOut.emit(False)
         self.finished.emit()
+        
 
 class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) : 
     def __init__(self) : 
@@ -179,6 +183,10 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
     def status (self, text) : 
         self.textEdit.append(text)
         self.textEdit.repaint()
+    
+    def greyOutStatus(self, status) : 
+        self.pushButton_2.setDisabled(status)
+        self.pushButton_3.setDisabled(status)
 
     def scrap (self) : 
         if self.folder=="" :
@@ -196,10 +204,12 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
         self.workerScrap = WorkerDoScrap(self, self.folder) 
         self.workerScrap.moveToThread(self.thread)
         self.thread.started.connect(self.workerScrap.doScrap)
+
         self.workerScrap.finished.connect(self.thread.quit)
         self.workerScrap.finished.connect(self.workerScrap.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
         self.workerScrap.progress.connect(self.status)
+        self.workerScrap.greyOut.connect(self.greyOutStatus)
         #self.doScrap(self.folder)
         self.thread.start()
         
@@ -219,7 +229,11 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
         for f in files : 
             if not (f in files_simnra) : 
                 fl.append(f)
-                shutil.copy( self.folder+"/"+f, self.simnraFolder+"/CrSec/User/"+ f)
+                try : 
+                    shutil.copy( self.folder+"/"+f, self.simnraFolder+"/CrSec/User/"+ f)
+                except : 
+                    print("Can not copy the cross section files. Aborting..")
+                    return
 
         self.status("Copied "+ str(len(fl))+ " files from "+ str(len(files))+ " files")
         self.status("Success!")
