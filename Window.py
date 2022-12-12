@@ -49,34 +49,46 @@ class WorkerDoScrap(QObject) :
         self.greyOut.emit(True)
         if self.folder=="" : 
             return False
+        try : 
+            browser = self.sw.comboBox_2.currentText() 
+            if browser== "Chrome" : 
+                chrome_options = webdriver.ChromeOptions()
+                prefs = {
+                'download.default_directory': self.folder.replace("/", '\\')  ,
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing_for_trusted_sources_enabled": False,
+                "safebrowsing.enabled": False
+                }
+                chrome_options.add_experimental_option('prefs', prefs)
+                chrome_options.add_argument("--headless")
+                driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options) 
+                self.progress.emit("Scrapping will be done using Chrome.")
+            elif browser =="Firefox" : 
+                options = Options()
+                options.headless = True
+                options.set_preference("browser.download.folderList", 2)
+                options.set_preference("browser.download.manager.showWhenStarting", False)
+                options.set_preference("browser.download.dir", self.folder.replace("/", '\\'))
+                options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
 
-        browser = self.sw.comboBox_2.currentText() 
-        if browser== "Chrome" : 
-            chrome_options = webdriver.ChromeOptions()
-            prefs = {
-            'download.default_directory': self.folder.replace("/", '\\')  ,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing_for_trusted_sources_enabled": False,
-            "safebrowsing.enabled": False
-            }
-            chrome_options.add_experimental_option('prefs', prefs)
-            chrome_options.add_argument("--headless")
-            driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options) 
-            self.progress.emit("Scrapping will be done using Chrome.")
-        elif browser =="Firefox" : 
-            options = Options()
-            options.headless = True
-            options.set_preference("browser.download.folderList", 2)
-            options.set_preference("browser.download.manager.showWhenStarting", False)
-            options.set_preference("browser.download.dir", self.folder.replace("/", '\\'))
-            options.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/x-gzip")
+                driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options)
+                self.progress.emit("Scrapping will be done using Firefox.")
+        
+        except : 
+            self.progress.emit("There is problem with initiating the webdriver. Aborting..")
+            self.greyOut.emit(False)
+            self.finished.emit()
+            return
 
-            driver = webdriver.Firefox(executable_path=GeckoDriverManager().install(), options=options)
-            self.progress.emit("Scrapping will be done using Firefox.")
+        try : 
+            driver.get("https://www-nds.iaea.org/exfor/ibandl.htm")
+        except : 
+            self.progress.emit("Problem accessing the IBANDL website. Aborting..")
+            self.greyOut.emit(False)
+            self.finished.emit()
+            return
 
-
-        driver.get("https://www-nds.iaea.org/exfor/ibandl.htm")
         driver.switch_to.frame("MenuFrame")
         targets_wd = driver.find_element(By.NAME, "selectTarget").find_elements(By.TAG_NAME, "option")
         targets = [] 
@@ -132,7 +144,7 @@ class WorkerDoScrap(QObject) :
                             tds =  tab.find_elements(By.TAG_NAME, "td") 
                             td=  tds[2].text
                             if td=="" : 
-                                print(td)
+                                #print(td)
                                 continue
                             tdtheta = float(tds[2].text[:-1]) 
                             #print("Theta : ", tdtheta)
@@ -178,7 +190,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
     def openFolder (self, item) : 
         self.folder = QFileDialog.getExistingDirectory(self, 'Select a folder to save the .r33 files')
         self.listWidget.item(0).setText(self.folder)
-        print(self.folder)
+        #print(self.folder)
 
     def status (self, text) : 
         self.textEdit.append(text)
@@ -191,7 +203,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
     def scrap (self) : 
         if self.folder=="" :
             return
-        print(connect())
+        #print(connect())
         self.status("Checking the connection ...")
         if connect() : 
             self.connection = True
@@ -199,6 +211,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
         else : 
             self.connection = False
             self.status("Can not connect to IBANDL website. Aborting..")
+            return
 
         self.thread = QThread()
         self.workerScrap = WorkerDoScrap(self, self.folder) 
