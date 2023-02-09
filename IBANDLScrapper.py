@@ -6,12 +6,10 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from PyQt5 import QtCore
 
 from PyQt5.QtCore import pyqtSignal,  QObject, QThread
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtWidgets import QFileDialog, QDialog, QMessageBox, QInputDialog
-from PyQt5.QtWidgets import QFileDialog, QDialog, QListWidgetItem
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QFileDialog
 import sys, os, shutil
 from MainWindow_ui import Ui_MainWindow
 import urllib.request
