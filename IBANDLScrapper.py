@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QFileDialog
 import sys, os, shutil
 from MainWindow_ui import Ui_MainWindow
 import urllib.request
+import traceback
 
 def connect(host='https://www.google.com'):
     try:
@@ -74,7 +75,8 @@ class WorkerDoScrap(QObject) :
                 self.progress.emit("Scrapping will be done using Firefox.")
         
         except : 
-            self.progress.emit("There is problem with initiating the webdriver. Aborting..")
+            print(traceback.format_exc())
+            self.progress.emit("There is a problem in initiating the webdriver. Aborting..")
             self.greyOut.emit(False)
             self.finished.emit()
             return
@@ -243,7 +245,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
                 try : 
                     shutil.copy( self.folder+"/"+f, self.simnraFolder+"/CrSec/User/"+ f)
                 except : 
-                    print("Can not copy the cross section files. Aborting..")
+                    self.status("Can not copy the cross section files to the SIMNRA installation folder.")
                     return
 
         self.status("Copied "+ str(len(fl))+ " files from "+ str(len(files))+ " files")
