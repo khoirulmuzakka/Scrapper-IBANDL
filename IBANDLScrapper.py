@@ -39,10 +39,11 @@ class WorkerDoScrap(QObject) :
     progress = pyqtSignal(str)
     greyOut = pyqtSignal(bool)
 
-    def __init__(self, sw, folder) : 
+    def __init__(self, sw, folder, headless) : 
         super().__init__()
         self.sw = sw
         self.folder = folder
+        self.headless = headless
 
     def doScrap (self) : 
         self.greyOut.emit(True)
@@ -60,12 +61,14 @@ class WorkerDoScrap(QObject) :
                 "safebrowsing.enabled": False
                 }
                 chrome_options.add_experimental_option('prefs', prefs)
-                chrome_options.add_argument("--headless")
+                if self.headless :
+                    chrome_options.add_argument("--headless")
                 driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options) 
                 self.progress.emit("Scrapping will be done using Chrome.")
             elif browser =="Firefox" : 
                 options = Options()
-                options.headless = True
+                if self.headless :
+                    options.headless = True
                 options.set_preference("browser.download.folderList", 2)
                 options.set_preference("browser.download.manager.showWhenStarting", False)
                 options.set_preference("browser.download.dir", self.folder.replace("/", '\\'))
@@ -201,6 +204,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
         self.pushButton_3.setDisabled(status)
 
     def scrap (self) : 
+        self.headless = self.checkBox.isChecked()
         if self.folder=="" :
             return
         #print(connect())
@@ -214,7 +218,7 @@ class ScrapWindow (QtWidgets.QMainWindow, Ui_MainWindow) :
             return
 
         self.thread = QThread()
-        self.workerScrap = WorkerDoScrap(self, self.folder) 
+        self.workerScrap = WorkerDoScrap(self, self.folder, self.headless) 
         self.workerScrap.moveToThread(self.thread)
         self.thread.started.connect(self.workerScrap.doScrap)
 
